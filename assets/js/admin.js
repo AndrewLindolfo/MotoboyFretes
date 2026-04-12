@@ -1,12 +1,10 @@
 import {
   auth,
   db,
-  googleProvider,
   ADMIN_EMAIL
 } from './firebase-config.js';
 
 import {
-  signInWithPopup,
   onAuthStateChanged,
   signOut,
   getIdTokenResult
@@ -15,7 +13,6 @@ import {
 import {
   collection,
   doc,
-  getDoc,
   getDocs,
   serverTimestamp,
   setDoc,
@@ -26,22 +23,13 @@ import {
   orderBy
 } from 'https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js';
 
-const views = {
-  login: document.getElementById('loginView'),
-  unauthorized: document.getElementById('unauthorizedView'),
-  admin: document.getElementById('adminView')
-};
-
 const sections = {
   dashboard: document.getElementById('dashboardSection'),
   users: document.getElementById('usersSection'),
   plans: document.getElementById('plansSection')
 };
 
-const loginBtn = document.getElementById('loginBtn');
 const signOutBtn = document.getElementById('signOutBtn');
-const unauthorizedSignOutBtn = document.getElementById('unauthorizedSignOutBtn');
-const loginMessage = document.getElementById('loginMessage');
 const refreshBtn = document.getElementById('refreshBtn');
 const plansList = document.getElementById('plansList');
 const usersList = document.getElementById('usersList');
@@ -59,93 +47,32 @@ const statPlans = document.getElementById('statPlans');
 const statActivePlans = document.getElementById('statActivePlans');
 const viewTitle = document.getElementById('viewTitle');
 const viewSubtitle = document.getElementById('viewSubtitle');
-const adminInfo = document.getElementById('adminInfo');
 const adminPhoto = document.getElementById('adminPhoto');
 const adminName = document.getElementById('adminName');
 const adminEmail = document.getElementById('adminEmail');
 
 let currentUser = null;
-let authProcessing = false;
 let unsubUsers = null;
 let unsubPlans = null;
 let plansCache = [];
 let usersCache = [];
 
 const DEFAULT_PLANS = [
-  {
-    id: 'plano-free',
-    nome: 'Plano Free',
-    valor: 0,
-    duracaoQuantidade: 2,
-    duracaoUnidade: 'hours',
-    descricao: 'Plano inicial automático do sistema.',
-    ativo: true,
-    ocultoNaEscolha: true,
-    fixo: true,
-    criadoEm: null,
-    atualizadoEm: null
-  },
-  {
-    id: 'plano-semanal',
-    nome: 'Plano Semanal',
-    valor: 10,
-    duracaoQuantidade: 7,
-    duracaoUnidade: 'days',
-    descricao: 'Plano semanal padrão.',
-    ativo: true,
-    ocultoNaEscolha: false,
-    fixo: false,
-    criadoEm: null,
-    atualizadoEm: null
-  },
-  {
-    id: 'plano-mensal',
-    nome: 'Plano Mensal',
-    valor: 25,
-    duracaoQuantidade: 30,
-    duracaoUnidade: 'days',
-    descricao: 'Plano mensal padrão.',
-    ativo: true,
-    ocultoNaEscolha: false,
-    fixo: false,
-    criadoEm: null,
-    atualizadoEm: null
-  },
-  {
-    id: 'plano-trimestral',
-    nome: 'Plano Trimestral',
-    valor: 60,
-    duracaoQuantidade: 90,
-    duracaoUnidade: 'days',
-    descricao: 'Plano trimestral padrão.',
-    ativo: true,
-    ocultoNaEscolha: false,
-    fixo: false,
-    criadoEm: null,
-    atualizadoEm: null
-  }
+  { id: 'plano-free', nome: 'Plano Free', valor: 0, duracaoQuantidade: 2, duracaoUnidade: 'hours', descricao: 'Plano inicial automático do sistema.', ativo: true, ocultoNaEscolha: true, fixo: true, criadoEm: null, atualizadoEm: null },
+  { id: 'plano-semanal', nome: 'Plano Semanal', valor: 10, duracaoQuantidade: 7, duracaoUnidade: 'days', descricao: 'Plano semanal padrão.', ativo: true, ocultoNaEscolha: false, fixo: false, criadoEm: null, atualizadoEm: null },
+  { id: 'plano-mensal', nome: 'Plano Mensal', valor: 25, duracaoQuantidade: 30, duracaoUnidade: 'days', descricao: 'Plano mensal padrão.', ativo: true, ocultoNaEscolha: false, fixo: false, criadoEm: null, atualizadoEm: null },
+  { id: 'plano-trimestral', nome: 'Plano Trimestral', valor: 60, duracaoQuantidade: 90, duracaoUnidade: 'days', descricao: 'Plano trimestral padrão.', ativo: true, ocultoNaEscolha: false, fixo: false, criadoEm: null, atualizadoEm: null }
 ];
 
-loginBtn?.addEventListener('click', async () => {
-  loginMessage.textContent = 'Abrindo login do Google...';
-  try {
-    const result = await signInWithPopup(auth, googleProvider);
-    loginMessage.textContent = 'Login concluído. Validando acesso...';
-    await handleSignedInUser(result.user);
-  } catch (error) {
-    console.error('Erro no login Google:', error);
-    loginMessage.textContent = error?.message || 'Falha ao entrar com Google.';
-  }
+signOutBtn?.addEventListener('click', async () => {
+  await signOut(auth);
+  location.replace('index.html');
 });
-
-signOutBtn?.addEventListener('click', () => signOut(auth));
-unauthorizedSignOutBtn?.addEventListener('click', () => signOut(auth));
 refreshBtn?.addEventListener('click', () => {
   renderUsers();
   renderPlans();
   updateStats();
 });
-
 newPlanBtn?.addEventListener('click', () => openPlanModal());
 
 document.querySelectorAll('[data-close-modal]').forEach((button) => {
@@ -167,107 +94,48 @@ document.getElementById('navMenu')?.addEventListener('click', (event) => {
 
 onAuthStateChanged(auth, async (user) => {
   currentUser = user;
-
   if (!user) {
-    authProcessing = false;
     stopListeners();
-    showView('login');
-    loginMessage.textContent = '';
-    adminInfo.classList.add('hidden');
-    signOutBtn.classList.add('hidden');
+    location.replace('index.html');
     return;
   }
-
-  if (!authProcessing) {
-    await handleSignedInUser(user);
-  }
-});
-
-
-async function handleSignedInUser(user) {
-  authProcessing = true;
-  loginMessage.textContent = 'Validando conta administradora...';
-
   try {
     await user.getIdToken(true);
     const token = await getIdTokenResult(user);
     const email = (user.email || token?.claims?.email || '').toLowerCase();
-
     if (email !== ADMIN_EMAIL.toLowerCase()) {
-      stopListeners();
-      adminInfo.classList.add('hidden');
-      signOutBtn.classList.add('hidden');
-      showView('unauthorized');
+      await signOut(auth);
+      location.replace('acesso-negado.html');
       return;
     }
-
     adminPhoto.src = user.photoURL || '';
     adminName.textContent = user.displayName || 'Administrador';
     adminEmail.textContent = user.email || '';
-    adminInfo.classList.remove('hidden');
-    signOutBtn.classList.remove('hidden');
-
-    showView('admin');
     setSection('dashboard');
-    loginMessage.textContent = '';
     await ensureDefaultPlans();
     startListeners();
   } catch (error) {
     console.error('Erro ao validar sessão do ADM:', error);
-    loginMessage.textContent = error?.message || 'Falha ao validar a sessão do administrador.';
-    stopListeners();
-    showView('login');
-  } finally {
-    authProcessing = false;
+    await signOut(auth);
+    location.replace('index.html');
   }
-}
-
-function showView(name) {
-  Object.entries(views).forEach(([key, element]) => {
-    element.classList.toggle('active', key === name);
-  });
-}
-
-function setSection(name) {
-  Object.entries(sections).forEach(([key, element]) => {
-    element.classList.toggle('active-section', key === name);
-  });
-
-  document.querySelectorAll('.nav-btn').forEach((btn) => {
-    btn.classList.toggle('active', btn.dataset.view === name);
-  });
-
-  const labels = {
-    dashboard: ['Dashboard', 'Resumo do sistema'],
-    users: ['Usuários', 'Gerencie usuários e planos ativos'],
-    plans: ['Planos', 'Cadastre e edite planos do sistema']
-  };
-  viewTitle.textContent = labels[name][0];
-  viewSubtitle.textContent = labels[name][1];
-}
+});
 
 async function ensureDefaultPlans() {
   const snapshot = await getDocs(collection(db, 'planos'));
   if (!snapshot.empty) return;
-
   for (const plan of DEFAULT_PLANS) {
-    await setDoc(doc(db, 'planos', plan.id), {
-      ...plan,
-      criadoEm: serverTimestamp(),
-      atualizadoEm: serverTimestamp()
-    });
+    await setDoc(doc(db, 'planos', plan.id), { ...plan, criadoEm: serverTimestamp(), atualizadoEm: serverTimestamp() });
   }
 }
 
 function startListeners() {
   stopListeners();
-
   unsubPlans = onSnapshot(query(collection(db, 'planos'), orderBy('nome')), (snapshot) => {
     plansCache = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
     renderPlans();
     updateStats();
   });
-
   unsubUsers = onSnapshot(query(collection(db, 'usuarios')), (snapshot) => {
     usersCache = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
     renderUsers();
@@ -278,20 +146,31 @@ function startListeners() {
 function stopListeners() {
   if (unsubPlans) unsubPlans();
   if (unsubUsers) unsubUsers();
-  unsubPlans = null;
-  unsubUsers = null;
-  plansCache = [];
-  usersCache = [];
+  unsubPlans = null; unsubUsers = null; plansCache = []; usersCache = [];
+}
+
+function setSection(name) {
+  Object.entries(sections).forEach(([key, element]) => {
+    element.classList.toggle('active-section', key === name);
+  });
+  document.querySelectorAll('.nav-btn').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.view === name);
+  });
+  const labels = {
+    dashboard: ['Dashboard', 'Resumo do sistema'],
+    users: ['Usuários', 'Gerencie usuários e planos ativos'],
+    plans: ['Planos', 'Cadastre e edite planos do sistema']
+  };
+  viewTitle.textContent = labels[name][0];
+  viewSubtitle.textContent = labels[name][1];
 }
 
 function renderPlans() {
   plansList.innerHTML = '';
-
   if (!plansCache.length) {
     plansList.innerHTML = '<div class="card"><p>Nenhum plano cadastrado.</p></div>';
     return;
   }
-
   for (const plan of plansCache) {
     const article = document.createElement('article');
     article.className = 'card plan-card';
@@ -312,18 +191,15 @@ function renderPlans() {
       <div class="card-actions">
         <button class="btn btn-secondary" data-edit-plan="${plan.id}">Editar</button>
         ${plan.fixo ? '' : `<button class="btn btn-danger" data-delete-plan="${plan.id}">Excluir</button>`}
-      </div>
-    `;
+      </div>`;
     plansList.appendChild(article);
   }
-
   plansList.querySelectorAll('[data-edit-plan]').forEach((button) => {
     button.addEventListener('click', () => {
       const plan = plansCache.find((item) => item.id === button.dataset.editPlan);
       if (plan) openPlanModal(plan);
     });
   });
-
   plansList.querySelectorAll('[data-delete-plan]').forEach((button) => {
     button.addEventListener('click', async () => {
       if (!confirm('Excluir este plano?')) return;
@@ -334,12 +210,10 @@ function renderPlans() {
 
 function renderUsers() {
   usersList.innerHTML = '';
-
   if (!usersCache.length) {
     usersList.innerHTML = '<div class="card"><p>Nenhum usuário cadastrado ainda.</p></div>';
     return;
   }
-
   for (const user of usersCache) {
     const article = document.createElement('article');
     article.className = 'card user-card';
@@ -362,11 +236,9 @@ function renderUsers() {
       </div>
       <div class="card-actions">
         <button class="btn btn-primary" data-manage-user-plan="${user.id}">Gerenciar plano</button>
-      </div>
-    `;
+      </div>`;
     usersList.appendChild(article);
   }
-
   usersList.querySelectorAll('[data-manage-user-plan]').forEach((button) => {
     button.addEventListener('click', () => {
       const user = usersCache.find((item) => item.id === button.dataset.manageUserPlan);
@@ -400,34 +272,20 @@ function openUserPlanModal(user) {
   document.getElementById('targetPlanEnd').value = toInputDateTimeLocal(user.planoFim);
   targetUsePlanDuration.checked = true;
   targetPlanEnd.disabled = true;
-
   const select = document.getElementById('targetPlanSelect');
-  select.innerHTML = plansCache
-    .filter((plan) => plan.ativo)
-    .map((plan) => `<option value="${plan.id}">${escapeHtml(plan.nome)}</option>`)
-    .join('');
-
+  select.innerHTML = plansCache.filter((plan) => plan.ativo).map((plan) => `<option value="${plan.id}">${escapeHtml(plan.nome)}</option>`).join('');
   const currentPlan = plansCache.find((plan) => plan.nome === user.planoAtualNome || plan.id === user.planoAtualId);
   if (currentPlan) select.value = currentPlan.id;
-
   userPlanModal.classList.remove('hidden');
 }
 
-function closeModal(id) {
-  document.getElementById(id).classList.add('hidden');
-}
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 
 async function savePlan(event) {
   event.preventDefault();
-
   const id = document.getElementById('planId').value.trim() || slugify(document.getElementById('planName').value);
   const current = plansCache.find((plan) => plan.id === id);
-
-  if (current?.fixo && id !== 'plano-free') {
-    alert('Plano fixo inválido.');
-    return;
-  }
-
+  if (current?.fixo && id !== 'plano-free') { alert('Plano fixo inválido.'); return; }
   const payload = {
     nome: document.getElementById('planName').value.trim(),
     valor: Number(document.getElementById('planValue').value || 0),
@@ -439,34 +297,20 @@ async function savePlan(event) {
     ocultoNaEscolha: current?.fixo ? true : false,
     fixo: current?.fixo || false
   };
-
-  await setDoc(doc(db, 'planos', id), {
-    ...payload,
-    criadoEm: current?.criadoEm || serverTimestamp()
-  }, { merge: true });
-
+  await setDoc(doc(db, 'planos', id), { ...payload, criadoEm: current?.criadoEm || serverTimestamp() }, { merge: true });
   closeModal('planModal');
 }
 
 async function saveUserPlan(event) {
   event.preventDefault();
-
   const userId = document.getElementById('targetUserId').value;
   const planId = document.getElementById('targetPlanSelect').value;
   const startInput = document.getElementById('targetPlanStart').value;
   const endInput = document.getElementById('targetPlanEnd').value;
   const plan = plansCache.find((item) => item.id === planId);
-
-  if (!userId || !plan || !startInput) {
-    alert('Preencha os campos obrigatórios.');
-    return;
-  }
-
+  if (!userId || !plan || !startInput) { alert('Preencha os campos obrigatórios.'); return; }
   const startDate = new Date(startInput);
-  const endDate = targetUsePlanDuration.checked
-    ? calculatePlanEnd(startDate, plan.duracaoQuantidade, plan.duracaoUnidade)
-    : new Date(endInput);
-
+  const endDate = targetUsePlanDuration.checked ? calculatePlanEnd(startDate, plan.duracaoQuantidade, plan.duracaoUnidade) : new Date(endInput);
   await updateDoc(doc(db, 'usuarios', userId), {
     planoAtualId: plan.id,
     planoAtualNome: plan.nome,
@@ -476,79 +320,34 @@ async function saveUserPlan(event) {
     planoStatus: 'ativo',
     atualizadoEm: serverTimestamp()
   });
-
   closeModal('userPlanModal');
 }
 
 async function removeUserPlan() {
   const userId = document.getElementById('targetUserId').value;
   if (!userId || !confirm('Remover o plano atual deste usuário?')) return;
-
   await updateDoc(doc(db, 'usuarios', userId), {
-    planoAtualId: null,
-    planoAtualNome: null,
-    planoValor: null,
-    planoInicio: null,
-    planoFim: null,
-    planoStatus: 'sem_plano',
-    atualizadoEm: serverTimestamp()
+    planoAtualId: null, planoAtualNome: null, planoValor: null, planoInicio: null, planoFim: null, planoStatus: 'sem_plano', atualizadoEm: serverTimestamp()
   });
-
   closeModal('userPlanModal');
 }
 
 function calculatePlanEnd(startDate, quantity, unit) {
   const end = new Date(startDate);
-  if (unit === 'hours') {
-    end.setHours(end.getHours() + quantity);
-  } else {
-    end.setDate(end.getDate() + quantity);
-  }
+  if (unit === 'hours') end.setHours(end.getHours() + quantity); else end.setDate(end.getDate() + quantity);
   return end;
 }
 
 function resolvePlanStatus(user) {
   if (!user.planoAtualNome || !user.planoFim) return { key: 'sem_plano', label: 'Sem plano', className: 'off' };
-  const now = new Date();
-  const end = new Date(user.planoFim);
+  const now = new Date(); const end = new Date(user.planoFim);
   if (Number.isNaN(end.getTime())) return { key: 'sem_plano', label: 'Sem plano', className: 'off' };
   if (end < now) return { key: 'vencido', label: 'Vencido', className: 'warn' };
   return { key: 'ativo', label: 'Ativo', className: 'ok' };
 }
 
-function formatDate(value) {
-  if (!value) return '-';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '-';
-  return date.toLocaleString('pt-BR');
-}
-
-function toInputDateTimeLocal(value) {
-  if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-
-function formatBRL(value) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value || 0));
-}
-
-function slugify(text) {
-  return String(text || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
-
-function escapeHtml(text) {
-  return String(text ?? '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;');
-}
+function formatDate(value) { if (!value) return '-'; const date = new Date(value); if (Number.isNaN(date.getTime())) return '-'; return date.toLocaleString('pt-BR'); }
+function toInputDateTimeLocal(value) { if (!value) return ''; const date = new Date(value); if (Number.isNaN(date.getTime())) return ''; const pad = (n) => String(n).padStart(2, '0'); return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`; }
+function formatBRL(value) { return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value || 0)); }
+function slugify(text) { return String(text || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''); }
+function escapeHtml(text) { return String(text ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;'); }
