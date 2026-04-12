@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rota Motoboy ADM</title>
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-badge">RM</div>
+        <div>
+          <h1>Rota Motoboy ADM</h1>
+          <p>Painel administrativo</p>
+        </div>
+      </div>
+
+      <nav class="nav" id="navMenu">
+        <button class="nav-btn active" data-view="dashboard">Dashboard</button>
+        <button class="nav-btn" data-view="users">Usuários</button>
+        <button class="nav-btn" data-view="plans">Planos</button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div id="adminInfo" class="admin-info hidden">
+          <img id="adminPhoto" alt="Foto" class="avatar" />
+          <div>
+            <strong id="adminName">Administrador</strong>
+            <p id="adminEmail"></p>
+          </div>
+        </div>
+        <button id="signOutBtn" class="btn btn-secondary hidden">Sair</button>
+      </div>
+    </aside>
+
+    <main class="content">
+      <section id="loginView" class="view active centered-card">
+        <div class="card login-card">
+          <h2>Entrar no ADM</h2>
+          <p>Somente a conta autorizada pode acessar este painel.</p>
+          <button id="loginBtn" class="btn btn-primary">Entrar com Google</button>
+          <p id="loginMessage" class="message"></p>
+        </div>
+      </section>
+
+      <section id="unauthorizedView" class="view centered-card">
+        <div class="card login-card">
+          <h2>Acesso negado</h2>
+          <p>Esta conta não tem permissão para usar o painel ADM.</p>
+          <button id="unauthorizedSignOutBtn" class="btn btn-secondary">Trocar conta</button>
+        </div>
+      </section>
+
+      <section id="adminView" class="view">
+        <header class="topbar">
+          <div>
+            <h2 id="viewTitle">Dashboard</h2>
+            <p id="viewSubtitle">Resumo do sistema</p>
+          </div>
+          <button id="refreshBtn" class="btn btn-secondary">Atualizar</button>
+        </header>
+
+        <section id="dashboardSection" class="section-block active-section">
+          <div class="cards-grid">
+            <article class="card stat-card">
+              <h3>Usuários cadastrados</h3>
+              <strong id="statUsers">0</strong>
+            </article>
+            <article class="card stat-card">
+              <h3>Planos cadastrados</h3>
+              <strong id="statPlans">0</strong>
+            </article>
+            <article class="card stat-card">
+              <h3>Usuários com plano ativo</h3>
+              <strong id="statActivePlans">0</strong>
+            </article>
+          </div>
+          <div class="card">
+            <h3>Próximos passos</h3>
+            <p>Cadastre e edite os planos na aba <strong>Planos</strong>. Depois use a aba <strong>Usuários</strong> para ativar, trocar ou remover planos de cada usuário.</p>
+          </div>
+        </section>
+
+        <section id="usersSection" class="section-block">
+          <div class="section-header">
+            <div>
+              <h3>Usuários</h3>
+              <p>Lista completa de usuários do app e gerenciamento de planos.</p>
+            </div>
+          </div>
+          <div id="usersList" class="stack-list"></div>
+        </section>
+
+        <section id="plansSection" class="section-block">
+          <div class="section-header">
+            <div>
+              <h3>Planos</h3>
+              <p>Cadastro e edição de planos do sistema.</p>
+            </div>
+            <button id="newPlanBtn" class="btn btn-primary">Novo plano</button>
+          </div>
+          <div id="plansList" class="stack-list"></div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <div id="planModal" class="modal hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="planModalTitle">Novo plano</h3>
+        <button class="icon-btn" data-close-modal="planModal">×</button>
+      </div>
+      <form id="planForm" class="form-grid">
+        <input type="hidden" id="planId" />
+        <label>
+          Nome do plano
+          <input id="planName" required />
+        </label>
+        <label>
+          Valor (R$)
+          <input id="planValue" type="number" step="0.01" min="0" required />
+        </label>
+        <label>
+          Duração
+          <input id="planDuration" type="number" min="1" required />
+        </label>
+        <label>
+          Unidade
+          <select id="planUnit" required>
+            <option value="hours">Horas</option>
+            <option value="days">Dias</option>
+          </select>
+        </label>
+        <label class="full-span">
+          Descrição
+          <textarea id="planDescription" rows="3"></textarea>
+        </label>
+        <label class="checkbox-row full-span">
+          <input id="planActive" type="checkbox" checked />
+          Plano ativo
+        </label>
+        <div class="form-actions full-span">
+          <button type="button" class="btn btn-secondary" data-close-modal="planModal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar plano</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="userPlanModal" class="modal hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Gerenciar plano do usuário</h3>
+        <button class="icon-btn" data-close-modal="userPlanModal">×</button>
+      </div>
+      <form id="userPlanForm" class="form-grid">
+        <input type="hidden" id="targetUserId" />
+        <label class="full-span">
+          Usuário
+          <input id="targetUserLabel" disabled />
+        </label>
+        <label>
+          Plano
+          <select id="targetPlanSelect" required></select>
+        </label>
+        <label>
+          Início
+          <input id="targetPlanStart" type="datetime-local" required />
+        </label>
+        <label class="full-span checkbox-row">
+          <input id="targetUsePlanDuration" type="checkbox" checked />
+          Calcular fim automaticamente com base na duração do plano
+        </label>
+        <label>
+          Fim
+          <input id="targetPlanEnd" type="datetime-local" />
+        </label>
+        <div class="form-actions full-span">
+          <button type="button" id="removeUserPlanBtn" class="btn btn-danger">Remover plano</button>
+          <button type="button" class="btn btn-secondary" data-close-modal="userPlanModal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Ativar / atualizar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module" src="assets/js/firebase-config.js"></script>
+  <script type="module" src="assets/js/app.js"></script>
+</body>
+</html>
