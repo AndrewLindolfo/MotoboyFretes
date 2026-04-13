@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Rota Motoboy ADM</title>
+  <title>Moto Frete ADM</title>
   <link rel="stylesheet" href="assets/css/style.css">
   <link rel="icon" href="assets/icons/favicon.ico" sizes="any">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32x32.png">
@@ -13,21 +13,30 @@
 </head>
 <body>
   <div id="app" class="app-shell">
-    <aside class="sidebar">
-      <div>
+    <button id="mobileSidebarBackdrop" class="mobile-sidebar-backdrop hidden" aria-hidden="true"></button>
+    <aside class="sidebar" id="sidebar">
+      <button id="sidebarToggleBtn" class="sidebar-toggle-btn" type="button" aria-label="Ocultar menu" title="Ocultar menu">‹</button>
+      <div class="sidebar-scroll">
+        <div class="sidebar-top">
         <div class="brand">
-          <div class="brand-badge">RM</div>
+          <img src="assets/img/rota-motoboy-logo.png" alt="Rota Motoboy" class="brand-logo" />
           <div>
-            <h1>Rota Motoboy ADM</h1>
+            <h1>Moto Frete ADM</h1>
             <p>Painel administrativo</p>
           </div>
         </div>
 
         <nav class="nav" id="navMenu">
           <button class="nav-btn active" data-view="dashboard">Dashboard</button>
+          <button class="nav-btn" data-view="finance">Financeiro</button>
+          <button class="nav-btn" data-view="sales">Vendas</button>
+          <button class="nav-btn" data-view="receipts">Recebimentos</button>
+          <button class="nav-btn" data-view="expenses">Despesas</button>
+          <button class="nav-btn" data-view="clients">Clientes</button>
           <button class="nav-btn" data-view="users">Usuários</button>
           <button class="nav-btn" data-view="plans">Planos</button>
         </nav>
+      </div>
       </div>
 
       <div class="sidebar-footer">
@@ -44,15 +53,18 @@
 
     <main class="content">
       <header class="topbar">
-        <div>
-          <h2 id="viewTitle">Dashboard</h2>
-          <p id="viewSubtitle">Resumo do sistema</p>
+        <div class="topbar-start">
+          <button id="mobileMenuBtn" class="icon-btn mobile-menu-btn" aria-label="Abrir menu">☰</button>
+          <div>
+            <h2 id="viewTitle">Dashboard</h2>
+            <p id="viewSubtitle">Resumo do sistema</p>
+          </div>
         </div>
         <button id="refreshBtn" class="btn btn-secondary">Atualizar</button>
       </header>
 
       <section id="dashboardSection" class="section-block active-section">
-        <div class="cards-grid">
+        <div class="cards-grid cards-grid-dashboard">
           <article class="card stat-card">
             <h3>Usuários cadastrados</h3>
             <strong id="statUsers">0</strong>
@@ -65,11 +77,104 @@
             <h3>Usuários com plano ativo</h3>
             <strong id="statActivePlans">0</strong>
           </article>
+          <article class="card stat-card">
+            <h3>Faturamento total</h3>
+            <strong id="statRevenueTotal">R$ 0,00</strong>
+          </article>
+          <article class="card stat-card">
+            <h3>Total recebido</h3>
+            <strong id="statReceivedTotal">R$ 0,00</strong>
+          </article>
+          <article class="card stat-card">
+            <h3>Lucro líquido</h3>
+            <strong id="statNetTotal">R$ 0,00</strong>
+          </article>
         </div>
-        <div class="card">
-          <h3>Próximos passos</h3>
-          <p>Cadastre e edite os planos na aba <strong>Planos</strong>. Depois use a aba <strong>Usuários</strong> para ativar, trocar ou remover planos de cada usuário.</p>
+        <div class="dashboard-grid">
+          <div class="card">
+            <h3>Resumo financeiro</h3>
+            <div class="meta-grid">
+              <div class="meta-item"><small>Vendido no mês</small><strong id="dashSoldMonth">R$ 0,00</strong></div>
+              <div class="meta-item"><small>Recebido no mês</small><strong id="dashReceivedMonth">R$ 0,00</strong></div>
+              <div class="meta-item"><small>Pendente</small><strong id="dashPending">R$ 0,00</strong></div>
+              <div class="meta-item"><small>Despesas do mês</small><strong id="dashExpensesMonth">R$ 0,00</strong></div>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Próximos passos</h3>
+            <p>Cadastre e edite os planos na aba <strong>Planos</strong>. Use <strong>Vendas</strong> para registrar os planos vendidos, <strong>Recebimentos</strong> para confirmar entradas e <strong>Despesas</strong> para ver o lucro real do projeto.</p>
+          </div>
         </div>
+        <div id="dashboardCharts" class="charts-grid"></div>
+      </section>
+
+      <section id="financeSection" class="section-block">
+        <div class="cards-grid">
+          <article class="card stat-card"><h3>Faturamento total</h3><strong id="finTotalSold">R$ 0,00</strong></article>
+          <article class="card stat-card"><h3>Total recebido</h3><strong id="finTotalReceived">R$ 0,00</strong></article>
+          <article class="card stat-card"><h3>Total pendente</h3><strong id="finTotalPending">R$ 0,00</strong></article>
+          <article class="card stat-card"><h3>Despesas</h3><strong id="finTotalExpenses">R$ 0,00</strong></article>
+          <article class="card stat-card"><h3>Lucro líquido</h3><strong id="finNet">R$ 0,00</strong></article>
+          <article class="card stat-card"><h3>Planos vencendo</h3><strong id="finExpiring">0</strong></article>
+        </div>
+        <div class="dashboard-grid">
+          <div class="card">
+            <h3>Resumo por status</h3>
+            <div class="meta-grid">
+              <div class="meta-item"><small>Vendas registradas</small><strong id="finSalesCount">0</strong></div>
+              <div class="meta-item"><small>Recebimentos lançados</small><strong id="finReceiptsCount">0</strong></div>
+              <div class="meta-item"><small>Despesas lançadas</small><strong id="finExpensesCount">0</strong></div>
+              <div class="meta-item"><small>Clientes com plano ativo</small><strong id="finClientsActive">0</strong></div>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Alertas rápidos</h3>
+            <div id="alertsList" class="simple-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="salesSection" class="section-block">
+        <div class="section-header">
+          <div>
+            <h3>Vendas de planos</h3>
+            <p>Registre tudo que foi vendido, pago ou pendente.</p>
+          </div>
+          <button id="newSaleBtn" class="btn btn-primary">Nova venda</button>
+        </div>
+        <div id="salesList" class="stack-list"></div>
+      </section>
+
+      <section id="receiptsSection" class="section-block">
+        <div class="section-header">
+          <div>
+            <h3>Recebimentos</h3>
+            <p>Controle o que realmente entrou.</p>
+          </div>
+          <button id="newReceiptBtn" class="btn btn-primary">Novo recebimento</button>
+        </div>
+        <div id="receiptsList" class="stack-list"></div>
+      </section>
+
+      <section id="expensesSection" class="section-block">
+        <div class="section-header">
+          <div>
+            <h3>Despesas</h3>
+            <p>Lance os custos do projeto para calcular o lucro real.</p>
+          </div>
+          <button id="newExpenseBtn" class="btn btn-primary">Nova despesa</button>
+        </div>
+        <div id="expensesList" class="stack-list"></div>
+      </section>
+
+      <section id="clientsSection" class="section-block">
+        <div class="section-header">
+          <div>
+            <h3>Clientes</h3>
+            <p>Visão consolidada do histórico financeiro por cliente.</p>
+          </div>
+        </div>
+        <div id="clientsList" class="stack-list"></div>
       </section>
 
       <section id="usersSection" class="section-block">
@@ -103,33 +208,12 @@
       </div>
       <form id="planForm" class="form-grid">
         <input type="hidden" id="planId" />
-        <label>
-          Nome do plano
-          <input id="planName" required />
-        </label>
-        <label>
-          Valor (R$)
-          <input id="planValue" type="number" step="0.01" min="0" required />
-        </label>
-        <label>
-          Duração
-          <input id="planDuration" type="number" min="1" required />
-        </label>
-        <label>
-          Unidade
-          <select id="planUnit" required>
-            <option value="hours">Horas</option>
-            <option value="days">Dias</option>
-          </select>
-        </label>
-        <label class="full-span">
-          Descrição
-          <textarea id="planDescription" rows="3"></textarea>
-        </label>
-        <label class="checkbox-row full-span">
-          <input id="planActive" type="checkbox" checked />
-          Plano ativo
-        </label>
+        <label>Nome do plano<input id="planName" required /></label>
+        <label>Valor (R$)<input id="planValue" type="number" step="0.01" min="0" required /></label>
+        <label>Duração<input id="planDuration" type="number" min="1" required /></label>
+        <label>Unidade<select id="planUnit" required><option value="hours">Horas</option><option value="days">Dias</option></select></label>
+        <label class="full-span">Descrição<textarea id="planDescription" rows="3"></textarea></label>
+        <label class="checkbox-row full-span"><input id="planActive" type="checkbox" checked />Plano ativo</label>
         <div class="form-actions full-span">
           <button type="button" class="btn btn-secondary" data-close-modal="planModal">Cancelar</button>
           <button type="submit" class="btn btn-primary">Salvar plano</button>
@@ -146,26 +230,11 @@
       </div>
       <form id="userPlanForm" class="form-grid">
         <input type="hidden" id="targetUserId" />
-        <label class="full-span">
-          Usuário
-          <input id="targetUserLabel" disabled />
-        </label>
-        <label>
-          Plano
-          <select id="targetPlanSelect" required></select>
-        </label>
-        <label>
-          Início
-          <input id="targetPlanStart" type="datetime-local" required />
-        </label>
-        <label class="full-span checkbox-row">
-          <input id="targetUsePlanDuration" type="checkbox" checked />
-          Calcular fim automaticamente com base na duração do plano
-        </label>
-        <label>
-          Fim
-          <input id="targetPlanEnd" type="datetime-local" />
-        </label>
+        <label class="full-span">Usuário<input id="targetUserLabel" disabled /></label>
+        <label>Plano<select id="targetPlanSelect" required></select></label>
+        <label>Início<input id="targetPlanStart" type="datetime-local" required /></label>
+        <label class="full-span checkbox-row"><input id="targetUsePlanDuration" type="checkbox" checked />Calcular fim automaticamente com base na duração do plano</label>
+        <label>Fim<input id="targetPlanEnd" type="datetime-local" /></label>
         <div class="form-actions full-span">
           <button type="button" id="removeUserPlanBtn" class="btn btn-danger">Remover plano</button>
           <button type="button" class="btn btn-secondary" data-close-modal="userPlanModal">Cancelar</button>
@@ -175,7 +244,77 @@
     </div>
   </div>
 
+  <div id="saleModal" class="modal hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="saleModalTitle">Nova venda</h3>
+        <button class="icon-btn" data-close-modal="saleModal">×</button>
+      </div>
+      <form id="saleForm" class="form-grid">
+        <input type="hidden" id="saleId" />
+        <label>Cliente<select id="saleUserId"><option value="">Selecionar usuário</option></select></label>
+        <label>Cliente manual<input id="saleClientName" placeholder="Nome do cliente" /></label>
+        <label>Plano<select id="salePlanId" required></select></label>
+        <label>Valor vendido (R$)<input id="saleValue" type="number" step="0.01" min="0" required /></label>
+        <label>Forma de pagamento<select id="salePaymentMethod"><option>Pix</option><option>Dinheiro</option><option>Cartão</option><option>Transferência</option><option>Outro</option></select></label>
+        <label>Status<select id="saleStatus"><option value="pendente">Pendente</option><option value="pago">Pago</option><option value="cancelado">Cancelado</option></select></label>
+        <label>Data da venda<input id="saleDate" type="datetime-local" required /></label>
+        <label>Data do pagamento<input id="salePaymentDate" type="datetime-local" /></label>
+        <label class="full-span">Observação<textarea id="saleNotes" rows="3"></textarea></label>
+        <div class="form-actions full-span">
+          <button type="button" class="btn btn-secondary" data-close-modal="saleModal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar venda</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="receiptModal" class="modal hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="receiptModalTitle">Novo recebimento</h3>
+        <button class="icon-btn" data-close-modal="receiptModal">×</button>
+      </div>
+      <form id="receiptForm" class="form-grid">
+        <input type="hidden" id="receiptId" />
+        <label>Venda vinculada<select id="receiptSaleId"><option value="">Nenhuma</option></select></label>
+        <label>Cliente<input id="receiptClientName" required /></label>
+        <label>Valor recebido (R$)<input id="receiptValue" type="number" step="0.01" min="0" required /></label>
+        <label>Método<select id="receiptPaymentMethod"><option>Pix</option><option>Dinheiro</option><option>Cartão</option><option>Transferência</option><option>Outro</option></select></label>
+        <label>Data do recebimento<input id="receiptDate" type="datetime-local" required /></label>
+        <label class="full-span">Observação<textarea id="receiptNotes" rows="3"></textarea></label>
+        <div class="form-actions full-span">
+          <button type="button" class="btn btn-secondary" data-close-modal="receiptModal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar recebimento</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="expenseModal" class="modal hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="expenseModalTitle">Nova despesa</h3>
+        <button class="icon-btn" data-close-modal="expenseModal">×</button>
+      </div>
+      <form id="expenseForm" class="form-grid">
+        <input type="hidden" id="expenseId" />
+        <label>Descrição<input id="expenseDescription" required /></label>
+        <label>Categoria<select id="expenseCategory"><option>Domínio</option><option>Hospedagem</option><option>Internet</option><option>Anúncios</option><option>Taxas</option><option>Suporte</option><option>Manutenção</option><option>Deslocamento</option><option>Outros</option></select></label>
+        <label>Valor (R$)<input id="expenseValue" type="number" step="0.01" min="0" required /></label>
+        <label>Forma de pagamento<select id="expensePaymentMethod"><option>Pix</option><option>Dinheiro</option><option>Cartão</option><option>Transferência</option><option>Outro</option></select></label>
+        <label>Data<input id="expenseDate" type="datetime-local" required /></label>
+        <label class="full-span">Observação<textarea id="expenseNotes" rows="3"></textarea></label>
+        <div class="form-actions full-span">
+          <button type="button" class="btn btn-secondary" data-close-modal="expenseModal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar despesa</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script type="module" src="assets/js/firebase-config.js"></script>
   <script type="module" src="assets/js/admin.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </body>
 </html>
