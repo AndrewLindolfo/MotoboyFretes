@@ -653,7 +653,7 @@ async function saveUserPlan(event) {
   if (!userId || !plan || !startInput) { alert('Preencha os campos obrigatórios.'); return; }
   const startDate = new Date(startInput);
   const endDate = targetUsePlanDuration.checked ? calculatePlanEnd(startDate, plan.duracaoQuantidade, plan.duracaoUnidade) : new Date(endInput);
-  await updateDoc(doc(db, 'usuarios', userId), {
+  const planoPayload = {
     planoAtualId: plan.id,
     planoAtualNome: plan.nome,
     planoValor: plan.valor,
@@ -661,7 +661,17 @@ async function saveUserPlan(event) {
     planoFim: endDate.toISOString(),
     planoStatus: 'ativo',
     atualizadoEm: serverTimestamp()
-  });
+  };
+  await updateDoc(doc(db, 'usuarios', userId), planoPayload);
+  await setDoc(doc(db, 'usuarios', userId, 'plano', 'dados'), {
+    id: plan.id,
+    nome: plan.nome,
+    valor: plan.valor,
+    dataInicio: startDate.getTime(),
+    dataFim: endDate.getTime(),
+    status: 'ativo',
+    atualizadoEm: serverTimestamp()
+  }, { merge: true });
   closeModal('userPlanModal');
 }
 
@@ -671,6 +681,15 @@ async function removeUserPlan() {
   await updateDoc(doc(db, 'usuarios', userId), {
     planoAtualId: null, planoAtualNome: null, planoValor: null, planoInicio: null, planoFim: null, planoStatus: 'sem_plano', atualizadoEm: serverTimestamp()
   });
+  await setDoc(doc(db, 'usuarios', userId, 'plano', 'dados'), {
+    id: null,
+    nome: 'Plano Free',
+    valor: 0,
+    dataInicio: 0,
+    dataFim: 0,
+    status: 'sem_plano',
+    atualizadoEm: serverTimestamp()
+  }, { merge: true });
   closeModal('userPlanModal');
 }
 
